@@ -1,0 +1,3 @@
+C:/Users/betta/CLionProjects/KIP/cmake-build-debug/CMakeFiles/KIP.dir
+C:/Users/betta/CLionProjects/KIP/cmake-build-debug/CMakeFiles/edit_cache.dir
+C:/Users/betta/CLionProjects/KIP/cmake-build-debug/CMakeFiles/rebuild_cache.dir
