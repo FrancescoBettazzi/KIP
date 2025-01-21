@@ -2,7 +2,7 @@ set(CMAKE_CUDA_COMPILER "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v12.
 set(CMAKE_CUDA_HOST_COMPILER "")
 set(CMAKE_CUDA_HOST_LINK_LAUNCHER "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC/14.42.34433/bin/Hostx64/x64/link.exe")
 set(CMAKE_CUDA_COMPILER_ID "NVIDIA")
-set(CMAKE_CUDA_COMPILER_VERSION "12.6.77")
+set(CMAKE_CUDA_COMPILER_VERSION "12.6.85")
 set(CMAKE_CUDA_DEVICE_LINKER "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v12.6/bin/nvlink")
 set(CMAKE_CUDA_FATBINARY "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v12.6/bin/fatbinary")
 set(CMAKE_CUDA_STANDARD_COMPUTED_DEFAULT "03")
@@ -50,7 +50,7 @@ endif()
 
 set(CMAKE_CUDA_COMPILER_TOOLKIT_ROOT "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v12.6")
 set(CMAKE_CUDA_COMPILER_TOOLKIT_LIBRARY_ROOT "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v12.6")
-set(CMAKE_CUDA_COMPILER_TOOLKIT_VERSION "12.6.77")
+set(CMAKE_CUDA_COMPILER_TOOLKIT_VERSION "12.6.85")
 set(CMAKE_CUDA_COMPILER_LIBRARY_ROOT "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v12.6")
 
 set(CMAKE_CUDA_ARCHITECTURES_ALL "50-real;52-real;53-real;60-real;61-real;62-real;70-real;72-real;75-real;80-real;86-real;87-real;89-real;90")

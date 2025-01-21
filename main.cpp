@@ -81,7 +81,7 @@ map<string, array<array<float, 5>, 5>> kernels5x5 = {
 };
 
 
-vector<unsigned char> applyKernel(
+vector<unsigned char> apply_kernel(
         const unsigned char *image, int width, int height,
         const array<array<float, 3>, 3> &kernel, int channels) {
 
@@ -110,7 +110,7 @@ vector<unsigned char> applyKernel(
 
     return outputImage;
 }
-vector<unsigned char> applyKernel5x5(
+vector<unsigned char> apply_kernel_5x5(
         const unsigned char *image, int width, int height,
         const array<array<float, 5>, 5> &kernel, int channels) {
 
@@ -140,7 +140,7 @@ vector<unsigned char> applyKernel5x5(
     return outputImage;
 }
 
-vector<unsigned char> applyKernelParallel(
+vector<unsigned char> apply_kernel_parallel(
         const unsigned char *image, int width, int height,
         const array<array<float, 3>, 3> &kernel, int channels) {
 
@@ -170,7 +170,7 @@ vector<unsigned char> applyKernelParallel(
 
     return outputImage;
 }
-vector<unsigned char> applyKernel5x5Parallel(
+vector<unsigned char> apply_kernel_5x5_parallel(
         const unsigned char *image, int width, int height,
         const array<array<float, 5>, 5> &kernel, int channels) {
 
@@ -202,7 +202,7 @@ vector<unsigned char> applyKernel5x5Parallel(
 }
 
 // Dichiarazione della funzione CUDA (kernel) definita in kernel.cu
-void runKernel();
+void run_kernel(const char* inputPath, const char* outputPath);
 
 int main() {
     int width, height, channels;
@@ -210,6 +210,7 @@ int main() {
     //const char *path_img = "../img/test.png";
     //const char *path_img = "../img/panda.jpg";
     const char *path_img = "../img/sheep.jpg";
+    const char *output_path = "../img/results/";
 
     //req_comp 0=auto, 1=scala grigi, 3=RGB
     int req_comp = 0;
@@ -225,16 +226,16 @@ int main() {
 
     for (const auto& [name, kernel] : kernels) {
         auto start_time_tmp = chrono::high_resolution_clock::now();
-        vector<unsigned char> outputImage = applyKernel(image, width, height, kernel, channels);
-        stbi_write_jpg(("../img/results/" + name + ".jpg").c_str(), width, height, channels, outputImage.data(), 100);
+        vector<unsigned char> outputImage = apply_kernel(image, width, height, kernel, channels);
+        stbi_write_jpg((output_path + name + ".jpg").c_str(), width, height, channels, outputImage.data(), 100);
         auto end_time_tmp = chrono::high_resolution_clock::now();
         chrono::duration<double> elapsed_seconds_tmp = end_time_tmp - start_time_tmp;
         cout << "Tempo di esecuzione per " << name << ": " << elapsed_seconds_tmp.count() << " s" << endl;
     }
     for (const auto& [name, kernel] : kernels5x5) {
         auto start_time_tmp = chrono::high_resolution_clock::now();
-        vector<unsigned char> outputImage = applyKernel5x5(image, width, height, kernel, channels);
-        stbi_write_jpg(("../img/results/" + name + ".jpg").c_str(), width, height, channels, outputImage.data(), 100);
+        vector<unsigned char> outputImage = apply_kernel_5x5(image, width, height, kernel, channels);
+        stbi_write_jpg((output_path + name + ".jpg").c_str(), width, height, channels, outputImage.data(), 100);
         auto end_time_tmp = chrono::high_resolution_clock::now();
         chrono::duration<double> elapsed_seconds_tmp = end_time_tmp - start_time_tmp;
         cout << "Tempo di esecuzione per " << name << ": " << elapsed_seconds_tmp.count() << " s" << endl;
@@ -250,16 +251,16 @@ int main() {
 
     for (const auto& [name, kernel] : kernels) {
         auto start_time_tmp = chrono::high_resolution_clock::now();
-        vector<unsigned char> outputImage = applyKernelParallel(image, width, height, kernel, channels);
-        stbi_write_jpg(("../img/results/" + name + "_parallel.jpg").c_str(), width, height, channels, outputImage.data(), 100);
+        vector<unsigned char> outputImage = apply_kernel_parallel(image, width, height, kernel, channels);
+        stbi_write_jpg((output_path + name + "_parallel.jpg").c_str(), width, height, channels, outputImage.data(), 100);
         auto end_time_tmp = chrono::high_resolution_clock::now();
         chrono::duration<double> elapsed_seconds_tmp = end_time_tmp - start_time_tmp;
         cout << "Tempo di esecuzione per " << name << ": " << elapsed_seconds_tmp.count() << " s" << endl;
     }
     for (const auto& [name, kernel] : kernels5x5) {
         auto start_time_tmp = chrono::high_resolution_clock::now();
-        vector<unsigned char> outputImage = applyKernel5x5Parallel(image, width, height, kernel, channels);
-        stbi_write_jpg(("../img/results/" + name + "_parallel.jpg").c_str(), width, height, channels, outputImage.data(), 100);
+        vector<unsigned char> outputImage = apply_kernel_5x5_parallel(image, width, height, kernel, channels);
+        stbi_write_jpg((output_path + name + "_parallel.jpg").c_str(), width, height, channels, outputImage.data(), 100);
         auto end_time_tmp = chrono::high_resolution_clock::now();
         chrono::duration<double> elapsed_seconds_tmp = end_time_tmp - start_time_tmp;
         cout << "Tempo di esecuzione per " << name << ": " << elapsed_seconds_tmp.count() << " s" << endl;
@@ -273,7 +274,7 @@ int main() {
 
     stbi_image_free(image);
 
-    runKernel();
+    run_kernel(path_img, output_path);
 
     return 0;
 }

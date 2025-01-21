@@ -40,3 +40,28 @@ void runKernel() {
     // Reset del dispositivo CUDA
     cudaDeviceReset();
 }
+
+
+// Funzione main
+/*int runKernel() {
+    // Saluto dall'host
+    greet("Pinco"); // Usa una C-string al posto di std::string
+    testKernel<<<1, 10>>>();
+
+    // Lancio del kernel CUDA
+    helloFromGPU<<<1, 10>>>();
+
+    // Controlla eventuali errori nel lancio del kernel
+    cudaError_t err = cudaGetLastError();
+    if (err != cudaSuccess) {
+        printf("CUDA Error: %s\n", cudaGetErrorString(err));
+    }
+
+    // Sincronizza il dispositivo per aspettare il completamento di tutti i thread
+    cudaDeviceSynchronize();
+
+    // Reset del dispositivo CUDA
+    cudaDeviceReset();
+
+    return 0;
+}*/

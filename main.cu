@@ -1,71 +1,72 @@
 #include <cuda_runtime.h>
 #include <iostream>
+//#define STB_IMAGE_IMPLEMENTATION
+#include "lib/stb_image.h"
+#include "lib/stb_image_write.h"
+//#define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <chrono>
 
-__global__ void applyKernelCUDA(const unsigned char* inputImage, unsigned char* outputImage, int width, int height, int channels, const float* kernel, int kernelSize) {
+#define CUDA_CHECK(call) \
+    do { \
+        cudaError_t err = call; \
+        if (err != cudaSuccess) { \
+            std::cerr << "CUDA Error: " << cudaGetErrorString(err) << " (" << __FILE__ << ":" << __LINE__ << ")" << std::endl; \
+            exit(err); \
+        } \
+    } while (0)
+
+// CUDA kernel to invert colors
+__global__ void invert_colors(unsigned char* d_image, int width, int height, int channels) {
     int x = blockIdx.x * blockDim.x + threadIdx.x;
     int y = blockIdx.y * blockDim.y + threadIdx.y;
-    int halfSize = kernelSize / 2;
 
-    if (x >= halfSize && y >= halfSize && x < width - halfSize && y < height - halfSize) {
-        float accum[3] = {0.0f, 0.0f, 0.0f};
-
-        // Iterazione sul kernel
-        for (int ky = -halfSize; ky <= halfSize; ky++) {
-            for (int kx = -halfSize; kx <= halfSize; kx++) {
-                int px = (y + ky) * width + (x + kx);
-                for (int c = 0; c < channels; c++) {
-                    accum[c] += inputImage[px * channels + c] * kernel[(ky + halfSize) * kernelSize + (kx + halfSize)];
-                }
-            }
-        }
-
-        int outIdx = (y * width + x) * channels;
+    if (x < width && y < height) {
+        int idx = (y * width + x) * channels;
         for (int c = 0; c < channels; c++) {
-            outputImage[outIdx + c] = min(max(int(accum[c]), 0), 255);
+            d_image[idx + c] = 255 - d_image[idx + c];
         }
     }
 }
 
-int main() {
-    int width = 1024;  // Imposta larghezza immagine
-    int height = 1024; // Imposta altezza immagine
-    int channels = 3;  // Canali colore
+void run_kernel(const char* inputPath, const char* outputPath) {
+    int width, height, channels;
 
-    // Alloca immagine di input e output su host
-    unsigned char* h_image = ... // Carica l'immagine come hai fatto finora
-    unsigned char* h_outputImage = new unsigned char[width * height * channels];
+    // Load the image
+    unsigned char* h_image = stbi_load(inputPath, &width, &height, &channels, 0);
+    if (!h_image) {
+        std::cerr << "Error loading image: " << inputPath << std::endl;
+        exit(EXIT_FAILURE);
+    }
 
-    // Alloca memoria su device
-    unsigned char *d_image, *d_outputImage;
-    float *d_kernel;
-    cudaMalloc(&d_image, width * height * channels * sizeof(unsigned char));
-    cudaMalloc(&d_outputImage, width * height * channels * sizeof(unsigned char));
-    cudaMalloc(&d_kernel, 9 * sizeof(float));
+    size_t imageSize = width * height * channels;
 
-    // Carica kernel (es. un kernel 3x3, ma puoi adattare)
-    float h_kernel[9] = { ... }; // Inserisci il kernel che desideri
+    // Allocate memory on the device
+    unsigned char* d_image;
+    CUDA_CHECK(cudaMalloc(&d_image, imageSize));
 
-    // Copia dati host->device
-    cudaMemcpy(d_image, h_image, width * height * channels * sizeof(unsigned char), cudaMemcpyHostToDevice);
-    cudaMemcpy(d_kernel, h_kernel, 9 * sizeof(float), cudaMemcpyHostToDevice);
+    // Copy image data to device
+    CUDA_CHECK(cudaMemcpy(d_image, h_image, imageSize, cudaMemcpyHostToDevice));
 
-    // Impostazione grid e blocchi
+    // Define block and grid sizes
     dim3 blockSize(16, 16);
     dim3 gridSize((width + blockSize.x - 1) / blockSize.x, (height + blockSize.y - 1) / blockSize.y);
 
-    // Lancio kernel
-    applyKernelCUDA<<<gridSize, blockSize>>>(d_image, d_outputImage, width, height, channels, d_kernel, 3);
+    // Launch kernel
+    invert_colors<<<gridSize, blockSize>>>(d_image, width, height, channels);
+    CUDA_CHECK(cudaDeviceSynchronize());
 
-    // Copia risultato device->host
-    cudaMemcpy(h_outputImage, d_outputImage, width * height * channels * sizeof(unsigned char), cudaMemcpyDeviceToHost);
+    // Copy result back to host
+    CUDA_CHECK(cudaMemcpy(h_image, d_image, imageSize, cudaMemcpyDeviceToHost));
 
-    // Libera memoria
-    cudaFree(d_image);
-    cudaFree(d_outputImage);
-    cudaFree(d_kernel);
-    delete[] h_outputImage;
-    delete[] h_image;
+    // Save the processed image
+    if (!stbi_write_png(outputPath, width, height, channels, h_image, width * channels)) {
+        std::cerr << "Error saving image: " << outputPath << std::endl;
+        exit(EXIT_FAILURE);
+    }
 
-    return 0;
+    std::cout << "Image processed and saved to: " << outputPath << std::endl;
+
+    // Free resources
+    stbi_image_free(h_image);
+    CUDA_CHECK(cudaFree(d_image));
 }
