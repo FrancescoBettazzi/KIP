@@ -248,7 +248,7 @@ int main() {
 
     printExecutionTimes(execution_times);
 
-    //applyKernelCUDA(path_img, output_path);
+    applyKernelCUDA(path_img, output_path);
 
     return 0;
 }
