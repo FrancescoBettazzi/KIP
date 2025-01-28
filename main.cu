@@ -28,7 +28,7 @@ __global__ void invert_colors(unsigned char* d_image, int width, int height, int
     }
 }
 
-void run_kernel(const char* inputPath, const char* outputPath) {
+void applyKernelCUDA(const char* inputPath, const char* outputPath) {
     int width, height, channels;
 
     // Load the image
