@@ -71,6 +71,12 @@ const KernelType unsharpMasking5X5 = {
                                              {-1 / 256.0f, -4 / 256.0f, -6 / 256.0f, -4 / 256.0f, -1 / 256.0f}
                                          };
 
+const KernelType kernel = {
+        {1 / 9.0f, 1 / 9.0f, 1 / 9.0f},
+        {1 / 9.0f, 1 / 9.0f, 1 / 9.0f},
+        {1 / 9.0f, 1 / 9.0f, 1 / 9.0f}
+};
+
 // Mappa per associare i nomi ai kernel
 map<string, KernelType> kernels = {
         {"identity",            identity},
@@ -96,19 +102,32 @@ void printExecutionTimes(const map<string, vector<double>>& execution_times) {
 
     for (const auto& entry : execution_times) {
         cout << left
-             << setw(20) << fixed << setprecision(6) << entry.first
-             << setw(20) << fixed << setprecision(6) << entry.second[0]
-             << setw(20) << fixed << setprecision(6) << entry.second[1]
-             << setw(20) << fixed << setprecision(6) << 0.0//entry.second[2]
+             << setw(20) << fixed << setprecision(10) << entry.first
+             << setw(20) << fixed << setprecision(10) << entry.second[0]
+             << setw(20) << fixed << setprecision(10) << entry.second[1]
+             << setw(20) << fixed << setprecision(10) << entry.second[2]
              << endl;
     }
 }
 
-auto applyKernel(
-        const unsigned char *image, int width, int height,
-        const KernelType &kernel, int channels) {
+string getFileName(const std::string& path) {
+    size_t lastSlashPos = path.find_last_of("/\\");
+    size_t lastDotPos = path.find_last_of(".");
 
-    auto start_time = chrono::high_resolution_clock::now();
+    std::string fileName = (lastSlashPos == std::string::npos) ? path : path.substr(lastSlashPos + 1);
+
+    if (lastDotPos != std::string::npos) {
+        fileName = fileName.substr(0, lastDotPos);
+    }
+
+    return fileName;
+}
+
+tuple<vector<unsigned char>, double> applyKernel(
+        const unsigned char *image, int width, int height,
+        const std::vector<std::vector<float>> &kernel, int channels) {
+
+    auto startTime = chrono::high_resolution_clock::now();
 
     vector<unsigned char> outputImage(width * height * channels);
     int kernelSize = kernel.size();
@@ -152,16 +171,16 @@ auto applyKernel(
         }
     }
 
-    auto end_time = chrono::high_resolution_clock::now();
-    double execution_time = chrono::duration<double>(end_time - start_time).count();
-    return make_tuple(outputImage, execution_time);
+    auto endTime = chrono::high_resolution_clock::now();
+    double executionTime = chrono::duration<double>(endTime - startTime).count();
+    return make_tuple(outputImage, executionTime);
 }
 
-auto applyKernelOMP(
+tuple<vector<unsigned char>, double> applyKernelOMP(
         const unsigned char *image, int width, int height,
         const KernelType &kernel, int channels) {
 
-    auto start_time = chrono::high_resolution_clock::now();
+    auto startTime = chrono::high_resolution_clock::now();
 
     vector<unsigned char> outputImage(width * height * channels);
     int kernelSize = kernel.size();
@@ -188,67 +207,124 @@ auto applyKernelOMP(
         }
     }
 
-    auto end_time = chrono::high_resolution_clock::now();
-    double execution_time = chrono::duration<double>(end_time - start_time).count();
-    return make_tuple(outputImage, execution_time);
+    auto endTime = chrono::high_resolution_clock::now();
+    double executionTime = chrono::duration<double>(endTime - startTime).count();
+    return make_tuple(outputImage, executionTime);
 }
 
 // Dichiarazione della funzione CUDA definita in main.cu
-void applyKernelCUDA(const char* inputPath, const char* outputPath);
+tuple<vector<unsigned char>, double> applyKernelCUDA(
+        const unsigned char *image, int width, int height,
+        const KernelType &kernel, int channels);
 
 int main() {
 
-    map<string, vector<double>> execution_times;
-
-    int width, height, channels;
+    map<string, vector<double>> executionTimes;
 
     // TEST IMAGES
-    //const char *path_img = "../img/test.png";
-    //const char *path_img = "../img/panda.jpg";
-    //const char *path_img = "../img/sheep.jpg";
+    //const char *pathImg = "../img/test.png";
+    //const char *pathImg = "../img/panda.jpg";
+    //const char *pathImg = "../img/sheep.jpg";
 
-    // LOCAL PATH
-    const char *path_img = "../img/sheep.jpg";
-    const char *output_path = "../img/results/";
+    // LOCAL PATHS
+    //const char *pathImg = "../img/sheep.jpg";
+    const char *outputPath = "../img/results/";
+    vector<string> pathImages = {
+            "../img/01.280x180.jpg",
+            "../img/02.299x160.jpg",
+            "../img/03.480p.jpg",
+            "../img/04.720p.jpg",
+            "../img/05.1080p.jpg",
+            "../img/06.4K.jpg",
+            "../img/07.5K.jpg",
+            "../img/08.6K.jpg"
+    };
 
-    // SERVER DINFO PATH
-    //const char *path_img = "img/sheep.jpg";
-    //const char *output_path = "img/results/";
+    // SERVER DINFO PATHS
+    //const char *pathImg = "img/sheep.jpg";
+    /*
+    const char *outputPath = "img/results/";
+    vector<string> pathImages = {
+            "img/01.280x180.jpg",
+            "img/02.299x160.jpg",
+            "img/03.480p.jpg",
+            "img/04.720p.jpg",
+            "img/05.1080p.jpg",
+            "img/06.4K.jpg",
+            "img/07.5K.jpg",
+            "img/08.6K.jpg"
+    };
+     */
 
 
-    if (!filesystem::exists(output_path))
-        filesystem::create_directories(output_path);
+    if (!filesystem::exists(outputPath))
+        filesystem::create_directories(outputPath);
 
-    //req_comp 0=auto, 1=gray scale, 3=RGB
-    int req_comp = 0;
+    //reqComp 0=auto, 1=gray scale, 3=RGB
+    int reqComp = 0;
+    vector<vector<unsigned char>> images;
+    vector<int> widths;
+    vector<int> heights;
+    vector<int> channels;
+    vector<string> names;
+    for(const string& path : pathImages) {
+        int width, height, currChannels;
+        unsigned char *image = stbi_load(path.c_str(), &width, &height, &currChannels, 0);
+        if (!image) {
+            cerr << "Error: can't open image!" << endl;
+            return -1;
+        }
+        images.emplace_back(image, image + width * height * currChannels);
+        widths.push_back(width);
+        heights.push_back(height);
+        channels.push_back(currChannels);
 
-    unsigned char *image = stbi_load(path_img, &width, &height, &channels, req_comp);
-    if (!image) {
-        cerr << "Error: can't open image!" << endl;
-        return -1;
+        string name = getFileName(path);
+        names.push_back(name);
+
+        stbi_image_free(image);
     }
 
     cout << "Computing Sequential Kernel Image Processing ..." << endl;
 
-    for (const auto &[name, kernel] : kernels) {
-        auto [outputImage, execution_time] = applyKernel(image, width, height, kernel, channels);
-        stbi_write_jpg((output_path + name + ".jpg").c_str(), width, height, channels, outputImage.data(), 100);
-        execution_times[name].emplace_back(execution_time);
+    for (size_t i = 0; i < images.size(); ++i) {
+        unsigned char* image = images[i].data();
+        int width = widths[i];
+        int height = heights[i];
+        int currChannels = channels[i];
+        string name = names[i];
+
+        auto [outputImage, executionTime] = applyKernel(image, width, height, kernel, currChannels);
+        string fullPath = outputPath + "seq_" + name + ".jpg";
+        stbi_write_jpg(fullPath.c_str(), width, height, channels, outputImage.data(), 100);
+        executionTimes[name].emplace_back(executionTime);
     }
 
-    cout << "Computing Parallel Kernel Image Processing ..." << endl;
-
+    return 0;/*
     for (const auto &[name, kernel] : kernels) {
-            auto [outputImage, execution_time] = applyKernelOMP(image, width, height, kernel, channels);
-            stbi_write_jpg((output_path + name + "_parallel.jpg").c_str(), width, height, channels, outputImage.data(), 100);
-            execution_times[name].emplace_back(execution_time);
+        auto [outputImage, executionTime] = applyKernel(image, width, height, kernel, channels);
+        stbi_write_jpg((outputPath + name + ".jpg").c_str(), width, height, channels, outputImage.data(), 100);
+        executionTimes[name].emplace_back(executionTime);
     }
 
-    stbi_image_free(image);
+    cout << "Computing OMP Kernel Image Processing ..." << endl;
 
-    printExecutionTimes(execution_times);
+    for (const auto &[name, kernel] : kernels) {
+            auto [outputImage, executionTime] = applyKernelOMP(image, width, height, kernel, channels);
+            stbi_write_jpg((outputPath + name + "_omp.jpg").c_str(), width, height, channels, outputImage.data(), 100);
+            executionTimes[name].emplace_back(executionTime);
+    }
 
-    applyKernelCUDA(path_img, output_path);
+    cout << "Computing CUDA Kernel Image Processing ..." << endl;
 
-    return 0;
+    for (const auto &[name, kernel] : kernels) {
+        auto [outputImage, executionTime] = applyKernelCUDA(image, width, height, kernel, channels);
+        stbi_write_jpg((outputPath + name + "_cuda.jpg").c_str(), width, height, channels, outputImage.data(), 100);
+        executionTimes[name].emplace_back(executionTime);
+    }
+
+
+    printExecutionTimes(executionTimes);
+
+    return 0;*/
 }
